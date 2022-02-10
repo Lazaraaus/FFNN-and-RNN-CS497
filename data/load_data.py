@@ -1,3 +1,4 @@
+from curses.ascii import isupper
 import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
@@ -6,7 +7,7 @@ import time
 import re
 nltk.download('punkt')
 
-PUNCTUATION = "()-[]{};:'\,/#$%'*&~"
+PUNCTUATION = "-{};:'\,/#$%'*&~"
 MONTHS = [
     "january",
     "february",
@@ -44,6 +45,29 @@ def tokenize_text(dataType:str):
     sent_tokenized_text = list(map(replace_all_numbers, sent_tokenized_text))
     sent_tokenized_text = list(map(lambda x: x.replace("\n", "").lstrip(), sent_tokenized_text))
     sent_tokenized_text = " ".join(sent_tokenized_text)
+
+    all_text_split = sent_tokenized_text.split()
+
+    paren_stack = []
+    brack_stack = []
+
+    for idx, val in enumerate(all_text_split):
+        if val == '(':
+            paren_stack.append(val)
+        elif val == '[':
+            brack_stack.append(val)
+        elif val == ')':
+            if len(paren_stack) != 0:
+                paren_stack.pop(0)
+        elif val == ']':
+            if len(brack_stack) != 0:
+                brack_stack.pop(0)
+        elif val == '.' or val == '?' or val == '!' and all_text_split[idx+1][0].isupper():
+            if len(paren_stack) == 0 and len(brack_stack) == 0:
+                all_text_split[idx] = '</s>'
+
+
+
 
     # next steps: go through each token and identify end of sequence places,
     # using stacks to keep track of sequences inside of () and []
