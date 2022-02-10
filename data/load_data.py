@@ -51,6 +51,9 @@ def tokenize_text(dataType:str):
     paren_stack = []
     brack_stack = []
 
+    # add end of sequence tokens, tracking parentheses and brackets
+    # so that end of sequence tokens are not inserted when
+    # parens/brackets are used
     for idx, val in enumerate(all_text_split):
         if val == '(':
             paren_stack.append(val)
@@ -66,7 +69,16 @@ def tokenize_text(dataType:str):
             if len(paren_stack) == 0 and len(brack_stack) == 0:
                 all_text_split[idx] = '</s>'
 
-
+    nLenAllText = len(all_text_split)
+    if nLenAllText % 6 == 0:
+        all_text_split = [all_text_split[i:i + 6] for i in range(0, len(all_text_split), 6)]
+    else:
+        nRemainder = nLenAllText % 6
+        all_text_split = all_text_split[:nLenAllText - nRemainder]
+        the_rest = all_text_split[nLenAllText - nRemainder:]
+        the_rest = all_text_split[nLenAllText - nRemainder - 6:nLenAllText - nRemainder]
+        all_text_split = [all_text_split[i:i + 6] for i in range(0, len(all_text_split), 6)]
+        all_text_split = all_text_split + the_rest
 
 
     # next steps: go through each token and identify end of sequence places,
@@ -76,7 +88,7 @@ def tokenize_text(dataType:str):
     # Put into Numpy
     tok_text = np.array(sent_tokenized_text)
     # Return
-    return tok_text, sent_tokenized_text
+    return tok_text, all_text_split
 
 def replace_all_numbers(tokens):
     # Time Benchmark
@@ -135,14 +147,36 @@ def replace_all_numbers(tokens):
     #print(f"Time taken for replace_all_numbers: {time_passed}\n")
     return tokens
 
+def make_vocab(sent_list):
+    tokens = []
+    for sent in sent_list:
+        for token in sent:
+            tokens.append(token)
+    
+    return set(tokens)
+
+def make_labels(sent_list):
+    labels = []
+    for sent in sent_list:
+        labels.append(sent[-1])
+
+    return labels
+
+def make_unlabeled(sent_list):
+    unlabeled_sents = []
+    for sent in sent_list:
+        unlabeled_sents.append(sent[0:5])
+
+    return unlabeled_sents
+
 '''
 Further processing:
 Replace numbers
 '''
+tok_text, sents = tokenize_text('train')
+vocab = make_vocab(sents)
+print(len(vocab))
 
-
-
-toks, sents = tokenize_text('train')
 # Loop through sentences
 for sent in sents:
 	# Loop through tokens in sentence
