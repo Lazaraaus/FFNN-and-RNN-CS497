@@ -20,7 +20,6 @@ class Feed_Forward(nn.Module):
 	def forward(self, input):
 		output_layer_input = F.relu(self.input_layer(input))
 		output_layer_output = F.relu(self.output_layer(output_layer_input))
-
 		return output_layer_output
 
 

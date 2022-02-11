@@ -173,14 +173,14 @@ def make_unlabeled(sent_list):
 Further processing:
 Replace numbers
 '''
-tok_text, sents = tokenize_text('train')
-vocab = make_vocab(sents)
-print(len(vocab))
+#tok_text, sents = tokenize_text('train')
+#vocab = make_vocab(sents)
+#print(len(vocab))
 
-# Loop through sentences
-for sent in sents:
-	# Loop through tokens in sentence
-	pass
+# # Loop through sentences
+# for sent in sents:
+# 	# Loop through tokens in sentence
+# 	pass
 
 
 
