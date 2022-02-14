@@ -4,8 +4,12 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 import numpy as np
 import time
+import math
 import re
 nltk.download('punkt')
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+import pdb
+
 
 PUNCTUATION = "-{};:'\,/#$%'*&~"
 MONTHS = [
@@ -68,6 +72,8 @@ def tokenize_text(dataType:str):
         elif val == '.' or val == '?' or val == '!' and all_text_split[idx+1][0].isupper():
             if len(paren_stack) == 0 and len(brack_stack) == 0:
                 all_text_split[idx] = '</s>'
+    
+    word_vectorizer_and_vocab(all_text_split)
 
     nLenAllText = len(all_text_split)
     if nLenAllText % 6 == 0:
@@ -81,14 +87,42 @@ def tokenize_text(dataType:str):
         all_text_split = all_text_split + the_rest
 
 
-    # next steps: go through each token and identify end of sequence places,
-    # using stacks to keep track of sequences inside of () and []
-    # then convert all text to lower
-    #sent_tokenized_text = 0
-    # Put into Numpy
-    tok_text = np.array(sent_tokenized_text)
-    # Return
-    return tok_text, all_text_split
+    return all_text_split
+
+
+def truncate(number, decimals=0):
+    """
+    Taken from: https://kodify.net/python/math/truncate-decimals/ to truncate floats
+    
+    Returns a value truncated to a specific number of decimal places.
+    """
+    if not isinstance(decimals, int):
+        raise TypeError("decimal places must be an integer.")
+    elif decimals < 0:
+        raise ValueError("decimal places has to be 0 or more.")
+    elif decimals == 0:
+        return math.trunc(number)
+
+    factor = 10.0 ** decimals
+    return math.trunc(number * factor) / factor    
+
+def word_vectorizer_and_vocab(corpus):
+    corpus = [" ".join(corpus)]
+    vectorizer = CountVectorizer(analyzer='word', max_features=100)
+
+    vectors = vectorizer.fit_transform(corpus)
+    word_embeddings = vectors.toarray()
+    vocab = vectorizer.vocabulary_ 
+    pdb.set_trace()
+    for idx, embedding in enumerate(word_embeddings):
+        embedding = np.tanh(embedding)/10
+       # pdb.set_trace()
+        word_embeddings[idx] = [truncate(feature, 1) for feature in embedding]
+    #test_array = [np.tanh(embedding) for embedding in word_embeddings[0:5]]
+
+    pdb.set_trace()
+    return word_embeddings, vocab
+
 
 def replace_all_numbers(tokens):
     # Time Benchmark
@@ -169,11 +203,7 @@ def make_unlabeled(sent_list):
 
     return unlabeled_sents
 
-'''
-Further processing:
-Replace numbers
-'''
-#tok_text, sents = tokenize_text('train')
+sents = tokenize_text('test')
 #vocab = make_vocab(sents)
 #print(len(vocab))
 
