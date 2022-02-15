@@ -73,7 +73,14 @@ def tokenize_text(dataType:str):
             if len(paren_stack) == 0 and len(brack_stack) == 0:
                 all_text_split[idx] = '</s>'
     
-    word_vectorizer_and_vocab(all_text_split)
+    #word_vectorizer_and_vocab(all_text_split)
+    all_text_split = list((map(lambda word: word.lower(), all_text_split)))
+
+    vocab = get_vocab(all_text_split)
+
+    embeddings = random_embeddings(vocab)
+
+    six_word_seq = None
 
     nLenAllText = len(all_text_split)
     if nLenAllText % 6 == 0:
@@ -86,9 +93,26 @@ def tokenize_text(dataType:str):
         all_text_split = [all_text_split[i:i + 6] for i in range(0, len(all_text_split), 6)]
         all_text_split = all_text_split + the_rest
 
+    six_word_seq = all_text_split    
 
-    return all_text_split
+    return six_word_seq, vocab, embeddings
 
+
+def random_embeddings(vocab):
+    """
+    vocab: a list of strings, each string is a unique part of the corpus vocabulary
+    """
+    
+    embeddings = np.random.uniform(-0.1, 0.1, (len(vocab), 100))
+
+    return embeddings
+
+def get_vocab(corpus):
+    """
+    corpus: a list of strings, each string is a token
+    """
+
+    return set(corpus)
 
 def truncate(number, decimals=0):
     """
@@ -113,14 +137,13 @@ def word_vectorizer_and_vocab(corpus):
     vectors = vectorizer.fit_transform(corpus)
     word_embeddings = vectors.toarray()
     vocab = vectorizer.vocabulary_ 
-    pdb.set_trace()
+    
     for idx, embedding in enumerate(word_embeddings):
         embedding = np.tanh(embedding)/10
        # pdb.set_trace()
         word_embeddings[idx] = [truncate(feature, 1) for feature in embedding]
     #test_array = [np.tanh(embedding) for embedding in word_embeddings[0:5]]
 
-    pdb.set_trace()
     return word_embeddings, vocab
 
 
@@ -189,10 +212,10 @@ def make_vocab(sent_list):
     
     return set(tokens)
 
-def make_labels(sent_list):
+def make_labels(sequences):
     labels = []
-    for sent in sent_list:
-        labels.append(sent[-1])
+    for sequence in sequences:
+        labels.append(sequence[-1])
 
     return labels
 
@@ -203,15 +226,9 @@ def make_unlabeled(sent_list):
 
     return unlabeled_sents
 
-sents = tokenize_text('test')
-#vocab = make_vocab(sents)
-#print(len(vocab))
 
-# # Loop through sentences
-# for sent in sents:
-# 	# Loop through tokens in sentence
-# 	pass
-
+if __name__ == "__main__":
+    seqs, vocab, embeddings = tokenize_text('test')
 
 
 

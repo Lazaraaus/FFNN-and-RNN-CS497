@@ -1,19 +1,50 @@
 from torch.utils.data.dataset import Dataset
 from data.load_data import *
+import pdb
 
 # Some Class to specify our Dataset for the DataLoader
 class MyDataset(Dataset):
-	def __init__(self, filename):
-		self.tok_text, self.sents = tokenize_text(filename)
-		self.vocab = make_vocab(self.sents)
-		self.labels = make_labels(sents)
-		self.unlabeled_sents = make_unlabeled(sents)
+        def __init__(self, filename):
+            self.sequences, self.vocab, self.embeddings = tokenize_text(filename)
 
-	def __len__(self):
-		return len(self.labels)
-	
-	def __getitem__(self, idx):
-		return self.unlabeled_sents[idx], self.labels[idx]
-	
-	def get_vocab(self):
-		return vocab
+            self.vocab2embedding = self.get_embedding_dict()
+            self.labels = make_labels(self.sequences)
+            self.unlabeled_seqs = make_unlabeled(self.sequences)
+
+        def __len__(self):
+            return len(self.labels)
+    
+        def __getitem__(self, idx):
+            seq_as_embeddings = np.zeros((5, 100))
+
+            for idx, token in enumerate(self.unlabeled_seqs[idx]):
+                seq_as_embeddings[idx] = self.vocab2embedding[token]
+
+            return seq_as_embeddings, self.vocab2embedding[self.labels[idx]]
+        
+        def get_vocab(self):
+            return self.vocab
+
+        def get_embeddings(self):
+            return self.embeddings
+
+        def get_embedding_dict(self):
+            vocab2embedding = dict()
+
+            for idx, token in enumerate(self.vocab):
+                 vocab2embedding[token] = self.embeddings[idx]
+
+            return vocab2embedding
+        
+        def get_vocab_index_dict(self):
+            vocab2index = dict()
+            for idx, word in self.vocab:
+                vocab2index[word] = idx
+
+            return vocab2index
+
+if __name__ == "__main__":
+    test_dataset = MyDataset("test")
+
+    pdb.set_trace()
+    print(2)

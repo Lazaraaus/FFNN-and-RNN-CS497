@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-#from torchtext.transforms import ToTensor
 from torch.utils.data import DataLoader
 import numpy as np
 import pdb
-from data import my_dataset
+from data.my_dataset import *
+from models import *
 
 def run_model(model, running_mode='train', train_set=None, valid_set=None, test_set=None,
               batch_size=1, learning_rate=0.01, n_epochs=1, stop_thr=1e-4, shuffle=True):
@@ -79,13 +79,13 @@ def run_model(model, running_mode='train', train_set=None, valid_set=None, test_
     3. In the testing mode:
        - call the test function (see below) with the test data loader and return the results
     """
-    
-
+        
+    # send the model to the GPU here
 
     pass
 
 
-def _train(model, data_loader, optimizer, device=torch.device('cuda')):
+def _train(model, data_loader, optimizer, device=torch.device(0)):
     """
     This function will implement one epoch of training a given model
 
@@ -100,48 +100,79 @@ def _train(model, data_loader, optimizer, device=torch.device('cuda')):
     
     """
     loss_func = nn.CrossEntropyLoss()
+    torch.cuda.empty_cache()
 
     for i, data in enumerate(data_loader):
+        pdb.set_trace()
         # Run the forward pass
-        features, label = data
+        context, final_word = data
+        
+        tensor_context = torch.tensor(context, device=device)
+        tensor_final_word = torch.tensor(final_word, device=device)
+        
+        
+        #print(f"context: {tensor_context.is_cuda}")
+        #tensor_final_word.cuda(0)
+        #print(f"final_word: {tensor_final_word.is_cuda}")
 
-        outputs = model(features.float())
-        loss = loss_func(outputs, labels.long())
-        loss_total += loss
+        predicted_final_word = model(tensor_context) # run the forward pass and get a prediction
 
-        # Backprop and optimisation
-        optimizer.zero_grad()
+        loss = loss_func(predicted_final_word, tensor_final_word) # calculates loss between prediction and label
+
+        # Backprop and optimization
+        if i % 4 == 0: # zero out gradients every batche of size 20
+            optimizer.zero_grad()
+
         loss.backward()
         optimizer.step()
 
     return model
 
-def _test(model, data_loader, optimizer, device=torch.device('cuda')):
-    pass
+def _test(model, vocab2index, data_loader, optimizer, device=torch.device(0)):
+    """
+    This function will evaluate a trained neural network on a validation
+    set or testing set
+
+    Returns accuracy
+    """
+    """
+    loss_func = nn.CrossEntropyLoss()
+    model.to(device)
+
+    avg_loss = 0
+    avg_acc = 0
+
+    for i, data in enumerate(data_loader):
+        # Run the forward pass
+        context, final_word = data
+        try:
+            final_word_vocab_index = vocab
+
+        tensor_context = torch.tensor(context)
+        tensor_final_word = torch.tensor(final_word)
+        
+        tensor_context.to(device) 
+        tensor_final_word.to(device)
+
+        predicted_pdf = model(context) # run the forward pass and get a predicted probability distribution
+        predicted_word_vocab_index = torch.argmax(predicted_pdf)
 
 
-n = 4
 
-pdb.set_trace()
-#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        loss = loss_func(predicted_final_word, final_word) # calculates loss between prediction and label
+        avg_loss += loss
+    return 
+    """
 
-#for batch_idx, (img, label) in enumerate(train_dataloader):
+if __name__ == "__main__":
+    torch.cuda.init()
+    test_dataloader = MyDataset("test") 
+    test_model =  Feed_Forward(len(test_dataloader))
+    print(f"initialized? {torch.cuda.is_initialized()}")
+    print(f"device name: {torch.cuda.get_device_name(0)}")
+    test_model.cuda(0)
+    print(f"model param: {next(test_model.parameters()).device}")
+    test_optimizer = optim.SGD(test_model.parameters(), lr=0.01)
+    _train(test_model, test_dataloader, test_optimizer)
 
-#a = torch.rand(10)
-#a = a.to(device1)
-#b = torch.tensor([1])
-#b = b.to(device1)
- 
-print(torch.cuda.is_available())
-#print(os.getcwd())
-#DataSet = my_dataset.MyDataset('train')
-#train_dataloader = DataLoader(DataSet)
-#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#device1 = torch.cuda.device(0)  
-#for batch_idx, (img, label) in enumerate(train_dataloader):
-
-#a = torch.rand(10)
-#a = a.to(device1)
-#b = torch.tensor([1])
-#b = b.to(device1)
-    
+    print(2)
