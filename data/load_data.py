@@ -91,7 +91,7 @@ def tokenize_text(dataType:str):
         the_rest = all_text_split[nLenAllText - nRemainder:]
         the_rest = all_text_split[nLenAllText - nRemainder - 6:nLenAllText - nRemainder]
         all_text_split = [all_text_split[i:i + 6] for i in range(0, len(all_text_split), 6)]
-        all_text_split = all_text_split + the_rest
+        all_text_split.append(the_rest)
 
     six_word_seq = all_text_split    
 

@@ -16,10 +16,7 @@ class MyDataset(Dataset):
             return len(self.labels)
     
         def __getitem__(self, idx):
-            seq_as_embeddings = np.zeros((5, 100))
-
-            for idx, token in enumerate(self.unlabeled_seqs[idx]):
-                seq_as_embeddings[idx] = self.vocab2embedding[token]
+            #seq_as_embeddings = np.zeros((5, 100))
 
             return self.unlabeled_seqs[idx], self.labels[idx]  #seq_as_embeddings, self.vocab2embedding[self.labels[idx]]
         
@@ -46,6 +43,5 @@ class MyDataset(Dataset):
 
 if __name__ == "__main__":
     test_dataset = MyDataset("test")
-
-    pdb.set_trace()
+    print(test_dataset.sequences[0:5])
     print(2)

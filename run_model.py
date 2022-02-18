@@ -85,7 +85,7 @@ def run_model(model, running_mode='train', train_set=None, valid_set=None, test_
     pass
 
 
-def _train(model, data_loader, optimizer, device=torch.device(0)):
+def _train(model, data_loader, optimizer, device=torch.device("cuda:0")):
     """
     This function will implement one epoch of training a given model
 
@@ -102,24 +102,32 @@ def _train(model, data_loader, optimizer, device=torch.device(0)):
     loss_func = nn.CrossEntropyLoss()
     torch.cuda.empty_cache()
     print("\nTRAINING MODEL\n")
+    #print(f"The Length of the Data Loader is: {len(data_loader)}\n")
+    #print(f"The length of the vocab is: {len(data_loader.vocab)}")
+    #print(f"The number of 5 token sequences is: {len(data_loader.unlabeled_seqs)}")
+    #print(f"The number of labels is: {len(data_loader.labels)}")
     pdb.set_trace()
     for i, data in enumerate(data_loader):
-        if i == 75: 
-            break
+        print(f"Loop Iteration: {i} out of {len(data_loader.unlabeled_seqs)}\n")
+        unk_1 = ''
+        unk_2 = ''
         #pdb.set_trace()
         # Run the forward pass
         context, final_word = data
-        print(f"The context is: {context}\nThe final_word is: {final_word}\n")
+        #print(f"The context is: {context}\nThe final_word is: {final_word}\n")
         # Get Context List of Word Embeddings
         context_tensor = torch.zeros((5, 100), device=device)
         for idx, word in enumerate(context):
+            #print(f"Index of current word is: {data_loader.vocab2index[word]}\n")
+            #print(f"The embedding of the current word is: {model.embeddings.weight[data_loader.vocab2index[word]]}")
             word_embedding = model.embeddings.weight[data_loader.vocab2index[word]]
-            context_tensor[idx]
+            context_tensor[idx] = word_embedding
+            
         # Flatten
         context_tensor = context_tensor.flatten() 
         # Get Final Word Word Embedding
         final_word_embedding = model.embeddings.weight[data_loader.vocab2index[final_word]]
-        #print(f"The context_list is: {context_tensor}\nThe final_word embedding is: {final_word}\n")
+        #print(f"The context_list is: {context_tensor}\nThe final_word embedding is: {final_word_embedding}\n")
         # Build Tensors  
         tensor_final_word = torch.tensor(final_word_embedding, device=device) 
         #print(f"The final word casted to tensor is: {tensor_final_word}")
@@ -132,18 +140,14 @@ def _train(model, data_loader, optimizer, device=torch.device(0)):
         #print(f"The attributes of the embeddings are: {dir(model.embeddings)}")
         #pdb.set_trace()
         loss = loss_func(predicted_final_word, torch.tensor([final_word_idx], device=device)) # calculates loss between prediction and label
-
-        # Backprop and optimization
         if i % 4 == 0: # zero out gradients every batche of size 20
             optimizer.zero_grad()
-
         loss.backward()
-        print(f"The loss of this iteration is: {loss.item}")
         optimizer.step()
     print("\nTRAINING MODEL FINISHED\n") 
     return model
 
-def _test(model, data_loader, optimizer, device=torch.device(0)):
+def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda:0")):
     """
     This function will evaluate a trained neural network on a validation
     set or testing set
@@ -160,47 +164,52 @@ def _test(model, data_loader, optimizer, device=torch.device(0)):
     for i, data in enumerate(data_loader):
         # Run the forward pass
         context, final_word = data
-        print(f"The context is: {context}\nThe final_word is: {final_word}\n")
-        pdb.set_trace()
+        #print(f"The context is: {context}\nThe final_word is: {final_word}\n")
+        #pdb.set_trace()
         # Get Context List of Word Embeddings
         context_tensor = torch.zeros((5, 100), device=device)
         for idx, word in enumerate(context):
-            word_embedding = model.embeddings.weight[data_loader.vocab2index[word]]
+            # Check if word out of vocab
+            if word not in train_loader.vocab:
+                word = "<unk>"
+            # Get embedding  & add to context tensor 
+            word_embedding = model.embeddings.weight[train_loader.vocab2index[word]]
             context_tensor[idx]
+        # Check for words unknown to model
+        if final_word not in train_loader.vocab:
+            final_word = "<unk>"
         # Flatten
         context_tensor = context_tensor.flatten() 
         # Get Final Word Word Embedding
-        final_word_embedding = model.embeddings.weight[data_loader.vocab2index[final_word]]
+        final_word_embedding = model.embeddings.weight[train_loader.vocab2index[final_word]]
         # Build Tensors  
         tensor_final_word = torch.tensor(final_word_embedding, device=device) 
         predicted_final_word = model(context_tensor) # run the forward pass and get a prediction
         #pdb.set_trace()
-        predicted_final_word = torch.reshape(predicted_final_word, (1, len(data_loader.vocab)))
+        predicted_final_word = torch.reshape(predicted_final_word, (1, len(train_loader.vocab)))
         high_prob_word_idx = torch.argmax(predicted_final_word)
-        final_word_idx = data_loader.vocab2index[final_word]
+        final_word_idx = train_loader.vocab2index[final_word]
         #pdb.set_trace()
-        #predicted_pdf = model(context) # run the forward pass and get a predicted probability distribution
-        #predicted_word_vocab_index = torch.argmax(predicted_pdf)
         loss = loss_func(predicted_final_word, torch.tensor([final_word_idx], device=device)) # calculates loss between prediction and label
         avg_loss += loss.item()
         avg_acc += 1 if (high_prob_word_idx == final_word_idx) else 0 
     
     print("\nFINISHED TESTING MODEL\n")
-    print(avg_loss)
+    print(avg_loss / len(data_loader))
     print(avg_acc / len(data_loader) * 100)
     return (avg_loss / len(data_loader)), (avg_acc / len(data_loader)) * 100
     
 
 if __name__ == "__main__":
     torch.cuda.init()
+    train_dataloader = MyDataset("train")
     test_dataloader = MyDataset("test") 
-    test_model =  Feed_Forward(len(test_dataloader.vocab))
-    test_model
+    train_model =  Feed_Forward(len(train_dataloader.vocab))
     print(f"initialized? {torch.cuda.is_initialized()}")
     print(f"device name: {torch.cuda.get_device_name(0)}")
-    test_model.cuda(0)
-    print(f"model param: {next(test_model.parameters()).device}")
-    test_optimizer = optim.SGD(test_model.parameters(), lr=0.01)
-    _train(test_model, test_dataloader, test_optimizer)
-    _test(test_model, test_dataloader, test_optimizer)
+    train_model.cuda(0)
+    print(f"model param: {next(train_model.parameters()).device}")
+    test_optimizer = optim.SGD(train_model.parameters(), lr=0.01)
+    _train(train_model, train_dataloader, test_optimizer)
+    _test(train_model, test_dataloader, train_dataloader,  test_optimizer)
     print(2)

@@ -23,13 +23,16 @@ class Feed_Forward(nn.Module):
 
         def forward(self, input):
                 input = input #.type(torch.DoubleTensor)
-                print(f"The type of the input to the forward pass is: {input.dtype}")
+                #print(f"The type of the input to the forward pass is: {input.dtype}")
                 first_layer_input = self.input_layer(input)
+                #self.embeddin
+                #print(f"The shape of the first_layer_input is: {first_layer_input.shape}")
                 output_layer_input = F.relu(first_layer_input)
+                #print(f"The shape of the output_layer_input is: {output_layer_input.shape}")
                 output_layer_output = self.output_layer(output_layer_input)
                 # Update Embeddings
-                self.embeddings(output_layer_output.long())
-                print("Done with training loop/n")
-                return output_layer_output
+                log_probs = F.log_softmax(output_layer_output)
+                #print(f"The log_probs are: {log_probs}")
+                return log_probs
 
 
