@@ -8,6 +8,7 @@ class MyDataset(Dataset):
             self.sequences, self.vocab, self.embeddings = tokenize_text(filename)
 
             self.vocab2embedding = self.get_embedding_dict()
+            self.vocab2index = self.get_vocab_index_dict()
             self.labels = make_labels(self.sequences)
             self.unlabeled_seqs = make_unlabeled(self.sequences)
 
@@ -20,7 +21,7 @@ class MyDataset(Dataset):
             for idx, token in enumerate(self.unlabeled_seqs[idx]):
                 seq_as_embeddings[idx] = self.vocab2embedding[token]
 
-            return seq_as_embeddings, self.vocab2embedding[self.labels[idx]]
+            return self.unlabeled_seqs[idx], self.labels[idx]  #seq_as_embeddings, self.vocab2embedding[self.labels[idx]]
         
         def get_vocab(self):
             return self.vocab
@@ -38,7 +39,7 @@ class MyDataset(Dataset):
         
         def get_vocab_index_dict(self):
             vocab2index = dict()
-            for idx, word in self.vocab:
+            for idx, word in enumerate(self.vocab):
                 vocab2index[word] = idx
 
             return vocab2index

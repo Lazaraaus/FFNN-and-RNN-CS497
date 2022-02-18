@@ -101,41 +101,56 @@ def _train(model, data_loader, optimizer, device=torch.device(0)):
     """
     loss_func = nn.CrossEntropyLoss()
     torch.cuda.empty_cache()
-
+    print("\nTRAINING MODEL\n")
+    pdb.set_trace()
     for i, data in enumerate(data_loader):
-        pdb.set_trace()
+        if i == 75: 
+            break
+        #pdb.set_trace()
         # Run the forward pass
         context, final_word = data
-        
-        tensor_context = torch.tensor(context, device=device)
-        tensor_final_word = torch.tensor(final_word, device=device)
-        
-        
-        #print(f"context: {tensor_context.is_cuda}")
-        #tensor_final_word.cuda(0)
-        #print(f"final_word: {tensor_final_word.is_cuda}")
-
-        predicted_final_word = model(tensor_context) # run the forward pass and get a prediction
-
-        loss = loss_func(predicted_final_word, tensor_final_word) # calculates loss between prediction and label
+        print(f"The context is: {context}\nThe final_word is: {final_word}\n")
+        # Get Context List of Word Embeddings
+        context_tensor = torch.zeros((5, 100), device=device)
+        for idx, word in enumerate(context):
+            word_embedding = model.embeddings.weight[data_loader.vocab2index[word]]
+            context_tensor[idx]
+        # Flatten
+        context_tensor = context_tensor.flatten() 
+        # Get Final Word Word Embedding
+        final_word_embedding = model.embeddings.weight[data_loader.vocab2index[final_word]]
+        #print(f"The context_list is: {context_tensor}\nThe final_word embedding is: {final_word}\n")
+        # Build Tensors  
+        tensor_final_word = torch.tensor(final_word_embedding, device=device) 
+        #print(f"The final word casted to tensor is: {tensor_final_word}")
+        #print(f"Type of tensor_final_word: {tensor_final_word.dtype}")
+        predicted_final_word = model(context_tensor) # run the forward pass and get a prediction
+        #pdb.set_trace()
+        predicted_final_word = torch.reshape(predicted_final_word, (1, len(data_loader.vocab)))
+        high_prob_word_idx = torch.argmax(predicted_final_word)
+        final_word_idx = data_loader.vocab2index[final_word]
+        #print(f"The attributes of the embeddings are: {dir(model.embeddings)}")
+        #pdb.set_trace()
+        loss = loss_func(predicted_final_word, torch.tensor([final_word_idx], device=device)) # calculates loss between prediction and label
 
         # Backprop and optimization
         if i % 4 == 0: # zero out gradients every batche of size 20
             optimizer.zero_grad()
 
         loss.backward()
+        print(f"The loss of this iteration is: {loss.item}")
         optimizer.step()
-
+    print("\nTRAINING MODEL FINISHED\n") 
     return model
 
-def _test(model, vocab2index, data_loader, optimizer, device=torch.device(0)):
+def _test(model, data_loader, optimizer, device=torch.device(0)):
     """
     This function will evaluate a trained neural network on a validation
     set or testing set
 
     Returns accuracy
     """
-    """
+    print("\nTESTING MODEL\n")
     loss_func = nn.CrossEntropyLoss()
     model.to(device)
 
@@ -145,34 +160,47 @@ def _test(model, vocab2index, data_loader, optimizer, device=torch.device(0)):
     for i, data in enumerate(data_loader):
         # Run the forward pass
         context, final_word = data
-        try:
-            final_word_vocab_index = vocab
-
-        tensor_context = torch.tensor(context)
-        tensor_final_word = torch.tensor(final_word)
-        
-        tensor_context.to(device) 
-        tensor_final_word.to(device)
-
-        predicted_pdf = model(context) # run the forward pass and get a predicted probability distribution
-        predicted_word_vocab_index = torch.argmax(predicted_pdf)
-
-
-
-        loss = loss_func(predicted_final_word, final_word) # calculates loss between prediction and label
-        avg_loss += loss
-    return 
-    """
+        print(f"The context is: {context}\nThe final_word is: {final_word}\n")
+        pdb.set_trace()
+        # Get Context List of Word Embeddings
+        context_tensor = torch.zeros((5, 100), device=device)
+        for idx, word in enumerate(context):
+            word_embedding = model.embeddings.weight[data_loader.vocab2index[word]]
+            context_tensor[idx]
+        # Flatten
+        context_tensor = context_tensor.flatten() 
+        # Get Final Word Word Embedding
+        final_word_embedding = model.embeddings.weight[data_loader.vocab2index[final_word]]
+        # Build Tensors  
+        tensor_final_word = torch.tensor(final_word_embedding, device=device) 
+        predicted_final_word = model(context_tensor) # run the forward pass and get a prediction
+        #pdb.set_trace()
+        predicted_final_word = torch.reshape(predicted_final_word, (1, len(data_loader.vocab)))
+        high_prob_word_idx = torch.argmax(predicted_final_word)
+        final_word_idx = data_loader.vocab2index[final_word]
+        #pdb.set_trace()
+        #predicted_pdf = model(context) # run the forward pass and get a predicted probability distribution
+        #predicted_word_vocab_index = torch.argmax(predicted_pdf)
+        loss = loss_func(predicted_final_word, torch.tensor([final_word_idx], device=device)) # calculates loss between prediction and label
+        avg_loss += loss.item()
+        avg_acc += 1 if (high_prob_word_idx == final_word_idx) else 0 
+    
+    print("\nFINISHED TESTING MODEL\n")
+    print(avg_loss)
+    print(avg_acc / len(data_loader) * 100)
+    return (avg_loss / len(data_loader)), (avg_acc / len(data_loader)) * 100
+    
 
 if __name__ == "__main__":
     torch.cuda.init()
     test_dataloader = MyDataset("test") 
-    test_model =  Feed_Forward(len(test_dataloader))
+    test_model =  Feed_Forward(len(test_dataloader.vocab))
+    test_model
     print(f"initialized? {torch.cuda.is_initialized()}")
     print(f"device name: {torch.cuda.get_device_name(0)}")
     test_model.cuda(0)
     print(f"model param: {next(test_model.parameters()).device}")
     test_optimizer = optim.SGD(test_model.parameters(), lr=0.01)
     _train(test_model, test_dataloader, test_optimizer)
-
+    _test(test_model, test_dataloader, test_optimizer)
     print(2)
