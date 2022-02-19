@@ -102,10 +102,10 @@ def _train(model, data_loader, optimizer, device=torch.device("cuda:0")):
     loss_func = nn.CrossEntropyLoss()
     torch.cuda.empty_cache()
     print("\nTRAINING MODEL\n")
-    #print(f"The Length of the Data Loader is: {len(data_loader)}\n")
-    #print(f"The length of the vocab is: {len(data_loader.vocab)}")
-    #print(f"The number of 5 token sequences is: {len(data_loader.unlabeled_seqs)}")
-    #print(f"The number of labels is: {len(data_loader.labels)}")
+    print(f"The Length of the Data Loader is: {len(data_loader)}\n")
+    print(f"The length of the vocab is: {len(data_loader.vocab)}")
+    print(f"The number of 5 token sequences is: {len(data_loader.unlabeled_seqs)}")
+    print(f"The number of labels is: {len(data_loader.labels)}")
     pdb.set_trace()
     for i, data in enumerate(data_loader):
         print(f"Loop Iteration: {i} out of {len(data_loader.unlabeled_seqs)}\n")
@@ -198,7 +198,7 @@ def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda
     avg_acc = avg_acc / len(data_loader)
     avg_acc = avg_acc * 100
     avg_loss = avg_loss / len(data_loader)
-    print(f"The average accurage is {avg_acc}")
+    print(f"The average accuracy is {avg_acc}")
     print(f"The average loss is {avg_loss}")
     return avg_loss, avg_acc
     

@@ -83,19 +83,17 @@ def tokenize_text(dataType:str):
     six_word_seq = None
 
     nLenAllText = len(all_text_split)
-    if nLenAllText % 6 == 0:
-        all_text_split = [all_text_split[i:i + 6] for i in range(0, len(all_text_split), 6)]
-    else:
-        nRemainder = nLenAllText % 6
-        all_text_split = all_text_split[:nLenAllText - nRemainder]
-        the_rest = all_text_split[nLenAllText - nRemainder:]
-        the_rest = all_text_split[nLenAllText - nRemainder - 6:nLenAllText - nRemainder]
-        all_text_split = [all_text_split[i:i + 6] for i in range(0, len(all_text_split), 6)]
-        all_text_split.append(the_rest)
-
-    six_word_seq = all_text_split    
-
-    return six_word_seq, vocab, embeddings
+    print(f"The length of all_text_split is: {nLenAllText}\n")
+    all_text_split = [all_text_split[i:i + 6] for i in range(0, len(all_text_split))]
+    nLenAllText = len(all_text_split) 
+    print(f"The length of all_text_split is: {nLenAllText}\n")
+    six_word_seqs = []
+    for i in range(nLenAllText - 1, 0, -1):
+        if len(all_text_split[i]) == 6:
+            six_word_seqs = all_text_split[0:i]
+            break
+    print(f"The length of the six word sequences is: {len(six_word_seqs)}\n")
+    return six_word_seqs, vocab, embeddings
 
 
 def random_embeddings(vocab):
@@ -229,6 +227,8 @@ def make_unlabeled(sent_list):
 
 if __name__ == "__main__":
     seqs, vocab, embeddings = tokenize_text('test')
+    pdb.set_trace()
+    print(len(seqs))
 
 
 
