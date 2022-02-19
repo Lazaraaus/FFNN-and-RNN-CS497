@@ -195,9 +195,12 @@ def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda
         avg_acc += 1 if (high_prob_word_idx == final_word_idx) else 0 
     
     print("\nFINISHED TESTING MODEL\n")
-    print(avg_loss / len(data_loader))
-    print(avg_acc / len(data_loader) * 100)
-    return (avg_loss / len(data_loader)), (avg_acc / len(data_loader)) * 100
+    avg_acc = avg_acc / len(data_loader)
+    avg_acc = avg_acc * 100
+    avg_loss = avg_loss / len(data_loader)
+    print(f"The average accurage is {avg_acc}")
+    print(f"The average loss is {avg_loss}")
+    return avg_loss, avg_acc
     
 
 if __name__ == "__main__":
@@ -207,7 +210,7 @@ if __name__ == "__main__":
     train_model =  Feed_Forward(len(train_dataloader.vocab))
     print(f"initialized? {torch.cuda.is_initialized()}")
     print(f"device name: {torch.cuda.get_device_name(0)}")
-    train_model.cuda(0)
+    train_model = train_model.cuda(0)
     print(f"model param: {next(train_model.parameters()).device}")
     test_optimizer = optim.SGD(train_model.parameters(), lr=0.01)
     _train(train_model, train_dataloader, test_optimizer)
