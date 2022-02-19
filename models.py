@@ -31,7 +31,7 @@ class Feed_Forward(nn.Module):
                 #print(f"The shape of the output_layer_input is: {output_layer_input.shape}")
                 output_layer_output = self.output_layer(output_layer_input)
                 # Update Embeddings
-                log_probs = F.log_softmax(output_layer_output)
+                log_probs = F.log_softmax(output_layer_output, dim=-1)
                 #print(f"The log_probs are: {log_probs}")
                 return log_probs
 
