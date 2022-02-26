@@ -43,5 +43,5 @@ class MyDataset(Dataset):
 
 if __name__ == "__main__":
     test_dataset = MyDataset("test")
-    print(test_dataset.sequences[0:5])
-    print(2)
+    #print(test_dataset.sequences[0:5])
+    #print(2)

@@ -228,7 +228,6 @@ def make_unlabeled(sent_list):
 if __name__ == "__main__":
     seqs, vocab, embeddings = tokenize_text('test')
     pdb.set_trace()
-    print(len(seqs))
 
 
 
