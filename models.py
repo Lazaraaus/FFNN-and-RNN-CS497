@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-
+import pdb
 
 class Feed_Forward(nn.Module):
         """
@@ -19,20 +19,28 @@ class Feed_Forward(nn.Module):
                 # Output Layer as Embedding  
                 self.output_layer = nn.Linear(100, vocab_size)
                 self.embeddings = nn.Embedding(vocab_size, 100)
+                self.embeddings.weight.requires_grad = True
                 #print(f"output layer: {self.output_layer.is_cuda}")
 
         def forward(self, input):
-                input = input #.type(torch.DoubleTensor)
-                #print(f"The type of the input to the forward pass is: {input.dtype}")
-                first_layer_input = self.input_layer(input)
-                #self.embeddin
-                #print(f"The shape of the first_layer_input is: {first_layer_input.shape}")
-                output_layer_input = F.relu(first_layer_input)
-                #print(f"The shape of the output_layer_input is: {output_layer_input.shape}")
-                output_layer_output = self.output_layer(output_layer_input)
+                #pdb.set_trace()
+                # Get Word Embeddings
+                embeds = self.embeddings(input).view((-1, 5 * 100 ))
+                # Comput h_t
+                h_t = torch.tanh(self.input_layer(embeds))
+                # Comput W_2.h_t
+                logits = self.output_layer(h_t)
+                # Compute Log Probs
+                log_probs = F.log_softmax(logits, dim=-1)
+                # Return
+                return logits, log_probs
+
+                # OG Way 
+                #first_layer_input = self.input_layer(input)
+                #output_layer_input = F.relu(first_layer_input)
+                #pdb.set_trace()
+                #output_layer_output = self.output_layer(output_layer_input)
                 # Update Embeddings
-                #log_probs = F.log_softmax(output_layer_output, dim=-1)
-                #print(f"The log_probs are: {log_probs}")
-                return output_layer_output
+                #return output_layer_output
 
 
