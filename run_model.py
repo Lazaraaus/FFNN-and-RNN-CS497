@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import pickle
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
@@ -176,7 +177,7 @@ def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda
                 word = "<unk>"
             # Get embedding  & add to context tensor 
             word_embedding = model.embeddings.weight[train_loader.vocab2index[word]]
-            context_tensor[idx]
+            context_tensor[idx] = word_embedding
         # Check for words unknown to model
         if final_word not in train_loader.vocab:
             final_word = "<unk>"
@@ -204,17 +205,136 @@ def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda
     print(f"The average loss is {avg_loss}")
     return avg_loss, avg_acc
     
+def _train_RNN(model, data_loader, optimizer, device=torch.device("cuda:0")):
+    """
+    This function will implement one epoch of training a given model
+
+    Inputs:
+    model: the neural network to be trained
+    data_loader: for loading the network input and targets from the training dataset
+    optimizer: the optimiztion method, e.g., SGD
+    device: hanlon's GPU
+
+    Outputs:
+    model: the trained model
+    
+    """
+    loss_func = nn.CrossEntropyLoss(reduction="sum").cuda(0)
+    losses = torch.zeros(len(data_loader), dtype= torch.float64, device=device)
+    torch.cuda.empty_cache()
+    print("\nTRAINING MODEL\n")
+    count = 0
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.1)
+    
+    while count != 5:
+        hidden_initial = torch.zeros((1, 20, 100), device=device)
+        context_tensor = torch.zeros((20, 30), device=device).long()
+        final_word_tensor = torch.zeros((20, len(data_loader.vocab)), device=device).long()
+
+
+        for i, data in enumerate(data_loader):
+            context, final_word = data
+            #if i == 500000:
+             #   break
+            batch_index = i % 20
+            for idx, word in enumerate(context):
+                context_tensor[batch_index][idx] = data_loader.vocab2index[word]
+
+            final_word_tensor[batch_index, data_loader.vocab2index[final_word]] = 1
+            if i % 20 == 0 and i != 0:
+                #pdb.set_trace()
+                hidden_initial = hidden_initial.detach()
+                predicted_final_word, hidden_initial = model(context_tensor, hidden_initial)
+
+                loss = loss_func(predicted_final_word[0,:,:].float(), final_word_tensor.float()) # calculates loss between prediction and label
+                losses[i] = loss.item()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                hidden_initial = torch.zeros((1, 20, 100), device=device)
+                context_tensor = torch.zeros((20, 30), device=device).long()
+                final_word_tensor = torch.zeros((20, len(data_loader.vocab)), device=device).long()
+                if i % 100000 == 0:
+                    print("The current loss", losses[i])
+                    current_loss_avg = torch.mean(losses[0:i])
+                    perp = torch.exp(current_loss_avg)
+                    print("Perplexity", perp)
+
+        print("\nTRAINING EPOCH-{count} FINISHED\n") 
+        count += 1
+        scheduler.step()
+    print("\nTRAINING FINISHED\n")
+    return model, hidden_initial
+
+def _test_RNN(model, data_loader, train_loader, optimizer, hidden_final, device=torch.device("cuda:0")):
+    """
+    This function will evaluate a trained neural network on a validation
+    set or testing set
+
+    Returns accuracy
+    """
+    print("\nTESTING MODEL\n")
+    loss_func = nn.CrossEntropyLoss(reduction="sum").cuda(0)
+    losses = torch.zeros(len(data_loader), dtype=torch.float64, device= device)
+    model.to(device)
+    hidden_final = torch.zeros(hidden_final.shape, device= device)
+    context_tensor = torch.zeros((20, 30), device=device).long()
+    final_word_tensor = torch.zeros((20, len(train_loader.vocab)), device=device)
+    for i, data in enumerate(data_loader):
+        context, final_word = data
+        batch_index = i % 20
+        for idx, word in enumerate(context):
+            if word not in train_loader.vocab:
+                word = "<unk>"
+            context_tensor[batch_index][idx] = train_loader.vocab2index[word]
+
+        if final_word not in train_loader.vocab:
+            final_word = "<unk>"
+        final_word_tensor[batch_index][train_loader.vocab2index[final_word]] = 1
+        if i % 20 == 0 and i != 0:
+            hidden_final = hidden_final.detach()
+            predicted_final_word, hidden_final  = model(context_tensor, hidden_final) # run the forward pass and get a prediction
+            loss = loss_func(predicted_final_word[0,:,:].float(), final_word_tensor.float())# calculates loss between prediction and label
+            losses[i] = loss.item()
+            context_tensor = torch.zeros((20, 30), device=device).long()
+            final_word_tensor = torch.zeros((20, len(train_loader.vocab)), device=device)
+            hidden_final = torch.zeros(hidden_final.shape, device = device)
+
+        
+    print("\nFINISHED TESTING MODEL\n")
+    avg_loss = torch.mean(losses)
+
+    perp = torch.exp(avg_loss)
+    print("Perplexity",perp)
+    print(f"The average loss is {avg_loss}")
+    return avg_loss, perp
+ 
 
 if __name__ == "__main__":
     torch.cuda.init()
-    train_dataloader = MyDataset("train")
-    test_dataloader = MyDataset("test") 
-    train_model =  Feed_Forward(len(train_dataloader.vocab))
+    print("CUDA version", torch.version.cuda)
+    torch.autograd.set_detect_anomaly(True)
+    train_dataloader = pickle.load(open("train_dataloader.p", "rb"))
+    test_dataloader = pickle.load(open("test_dataloader.p", "rb"))
+    #pickle.dump(train_dataloader, open("train_dataloader.p", "wb"))
+    #pickle.dump(test_dataloader, open("test_dataloader.p", "wb"))
+    #train_model =  Feed_Forward(len(train_dataloader.vocab))
+    print("TEST Data Loader",len(test_dataloader))
+    train_model_rnn = Recurrent_Neural_Network(len(train_dataloader.vocab))
     print(f"initialized? {torch.cuda.is_initialized()}")
     print(f"device name: {torch.cuda.get_device_name(0)}")
-    train_model = train_model.cuda(0)
-    print(f"model param: {next(train_model.parameters()).device}")
-    test_optimizer = optim.SGD(train_model.parameters(), lr=0.01)
-    _train(train_model, train_dataloader, test_optimizer)
-    _test(train_model, test_dataloader, train_dataloader,  test_optimizer)
-    print(2)
+    #train_model = train_model.cuda(0)
+    
+    train_model_rnn = train_model_rnn.cuda(0)
+    #print(f"model param: {next(train_model.parameters()).device}")
+    #test_optimizer = optim.SGD(train_model.parameters(), lr=0.01)
+    #_train(train_model, train_dataloader, test_optimizer)
+    #_test(train_model, test_dataloader, train_dataloader,  test_optimizer)
+    #print(2)
+    #print(f"model param: {next(train_model_rnn.parameters()).device}")
+    test_optimizer_rnn = optim.SGD(train_model_rnn.parameters(), lr=0.001)
+    train_model_rnn.train()
+    model, hidden_rnn = _train_RNN(train_model_rnn, train_dataloader, test_optimizer_rnn)
+    model.eval()
+    _test_RNN(model, test_dataloader, train_dataloader,  test_optimizer_rnn, hidden_rnn)
+    
