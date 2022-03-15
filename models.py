@@ -19,16 +19,16 @@ class Feed_Forward(nn.Module):
                 # Output Layer as Embedding  
                 self.output_layer = nn.Linear(100, vocab_size)
                 self.embeddings = nn.Embedding(vocab_size, 100)
+                self.embeddings.weight.data.uniform_(-0.1, 0.1)
                 self.embeddings.weight.requires_grad = True
                 #print(f"output layer: {self.output_layer.is_cuda}")
 
         def forward(self, input):
-                #pdb.set_trace()
                 # Get Word Embeddings
                 embeds = self.embeddings(input).view((-1, 5 * 100 ))
-                # Comput h_t
+                # Compute h_t
                 h_t = torch.tanh(self.input_layer(embeds))
-                # Comput W_2.h_t
+                # Compute W_2.h_t
                 logits = self.output_layer(h_t)
                 # Compute Log Probs
                 log_probs = F.log_softmax(logits, dim=-1)

@@ -105,19 +105,20 @@ def _train(model, data_loader, optimizer, device=torch.device("cuda:0")):
     """
     print("\nTRAINING MODEL\n")
     # Set Loss Func
-    loss_func = nn.CrossEntropyLoss().cuda(0)
+    loss_func = nn.CrossEntropyLoss(reduction='sum').cuda(0)# CHANGE: Put the loss func onto the GPU
     # Set Losses Numpy Array
-    losses = np.empty(shape=len(data_loader), dtype='f')
+    losses = torch.zeros(len(data_loader), dtype=torch.float64, device=device)#np.empty(shape=len(data_loader), dtype='f') # CHANGE: Numpy array to hold losses
+    large_losses = 0
     # Set Epoch Timer
     epoch_timer = time.time()
     # Set Count
     count = 0
-    while count != 1:
+    while count != 20:
         # Context Tensor
         # Get Context List of Word Embeddings
         model_input_tensor = torch.zeros((20, 5), device=device).long() # Tensor For Inputs
         final_word_indices = torch.zeros(20, device=device).long()      # Tensor For Idxs Target Token
-        y_target = torch.zeros(1, len(data_loader.vocab), device=device).long() # Tensor to hold target probability distrubtion
+        y_target = torch.zeros(1, len(data_loader.vocab), device=device).long() # Tensor to hold target probability distrubtion'
         for i, data in enumerate(data_loader): 
             # Batch Idx
             batch_idx = i % 20
@@ -133,28 +134,31 @@ def _train(model, data_loader, optimizer, device=torch.device("cuda:0")):
             batch_timer = time.time()
             # Check if we've met our batch size
             if i % 20 == 0 and i != 0:
+                # Zero Grads 
                 # If so, get ready to pass input to model
                 for batch_input_count in range(20):
                     # Get Model Prediction  
                     output_logits, log_probs = model(model_input_tensor[batch_input_count])
-                    output_logits = torch.reshape(output_logits, (1, len(data_loader.vocab))) # Reshape for CrossEntropyLoss
+                    #log_probs = torch.reshape(output_logits, (1, len(data_loader.vocab))) # Reshape for CrossEntropyLoss
                     y_target[0][final_word_indices[batch_input_count]] = 1 
                     # Calc CrossEntropyLoss
                     loss = loss_func(output_logits.float(), y_target.float()) # calculates loss 
+                    #if int(loss.item()) >= 600:
+                        #large_losses += 1
+                        #print(f"The number of large losses is: {large_losses}")
                     # Add to losses array
                     losses[i] = loss.item()
                     # Check if 100,000 examples have been processed
                     if i % 100000 == 0 and batch_input_count == 19:
                         # If so, print stats
-                        sub_arr = np.array(losses[0:i].tolist())
-                        curr_loss_avg = np.mean(sub_arr)
+                        #sub_arr = torch.tensor(losses[0:i].tolist())
+                        curr_loss_avg = torch.mean(losses[0:i])
                         print(f"Loop Iteration: {i} out of {len(data_loader.unlabeled_seqs)}\n")
                         print(f"The loss of this of this iteration  is: {losses[i]}\n")
                         print(f"The average loss so far is: {curr_loss_avg}")
                         print(f"The time for this batch: {time.time() - batch_timer}")
-                        print(f"The perplexity of this example is: {torch.exp(loss/20)}")
-                        curr_loss_avg_tensor = torch.tensor(curr_loss_avg, device=device, dtype=torch.float64)
-                        print(f"The perplexity of this model (so far) is: {torch.exp(curr_loss_avg_tensor)}")
+                        #curr_loss_avg_tensor = torch.tensor(curr_loss_avg, device=device, dtype=torch.float64)
+                        print(f"The perplexity of this model (so far) is: {torch.exp(curr_loss_avg)}")
                         #pdb.set_trace()
 
                 # Update After Batch of 20
@@ -167,13 +171,13 @@ def _train(model, data_loader, optimizer, device=torch.device("cuda:0")):
                 model_input_tensor = torch.zeros((20, 5), device=device).long()
 
             # Return Early
-            #if i == 500000:
+            #if i == 300000:
                 #return model
-        print(f"\nTRAINING EPOCH-{count + 1} FINISHED\n") 
+        print(f"\nTRAINING EPOCH-{count + 1} FINISHED") 
+        print(f"The time for this epoch: {time.time() - epoch_timer}\n")
         # Incr Epoch Count
         count += 1
     print("\nTRAINING FINISHED\n")
-    print(f"The time for this epoch: {time.time() - epoch_timer}")
     return model
 
 def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda:0")):
@@ -184,8 +188,8 @@ def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda
     Returns accuracy
     """
     print("\nTESTING MODEL\n")
-    loss_func = nn.CrossEntropyLoss().cuda()
-    losses = np.empty(shape=len(train_loader), dtype='f')
+    loss_func = nn.CrossEntropyLoss().cuda(0)
+    losses = torch.zeros(len(data_loader), dtype=torch.float64, device=device)#np.empty(shape=len(data_loader), dtype='f')
     model_input_tensor = torch.zeros((20, 5), device=device).long()
     final_word_indices = torch.zeros(20, device=device).long()
     y_target = torch.zeros(1, len(train_loader.vocab), device=device).long()
@@ -215,7 +219,7 @@ def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda
                 #batch_context_tensor = context_tensor[batch_input_count].flatten()
                 #output_logits = model(batch_context_tensor) # run the forward pass and get a prediction
                 # Get Model Prediction
-                output_logits, probs = model(model_input_tensor[batch_input_count]) # run the forward pass and get a prediction
+                output_logits, log_probs = model(model_input_tensor[batch_input_count]) # run the forward pass and get a prediction
                 output_logits = torch.reshape(output_logits, (1, len(train_loader.vocab)))
                 final_word_idx = train_loader.vocab2index[final_word]
                 y_target[0][final_word_indices[batch_input_count]] = 1
@@ -230,10 +234,12 @@ def _test(model, data_loader, train_loader, optimizer, device=torch.device("cuda
             model_input_tensor = torch.zeros((20, 5), device=device).long()
     
     print("\nFINISHED TESTING MODEL\n")
-    avg_loss = np.mean(losses)
-    avg_loss_tensor = torch.tensor(avg_loss, device=device, dtype=torch.float64)
-    perplexity = torch.exp(avg_loss_tensor)
+    avg_loss = torch.mean(losses)
+    #avg_loss_tensor = torch.tensor(avg_loss, device=device, dtype=torch.float64)
+    perplexity = torch.exp(avg_loss)
     print(f"The perplexity is {perplexity}")
+    print(f"The average loss is {avg_loss}")
+    print(f"The first 50 losses are {losses[0:50]}")
 
     return avg_loss, perplexity
     
